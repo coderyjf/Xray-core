@@ -3,6 +3,7 @@ package utils
 import (
 	"runtime"
 	"sync"
+	"time"
 	"weak"
 )
 
@@ -42,4 +43,27 @@ func (c *WeakCacheMap[K, V]) Store(key K, value *V) {
 			delete(c.m, key)
 		}
 	}, struct{}{})
+}
+
+func (c *WeakCacheMap[K, V]) Delete(key K) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.m, key)
+}
+
+func (c *WeakCacheMap[K, V]) Range(f func(K, *V) bool) {
+	for k, v := range c.m {
+		if value := v.Value(); value != nil {
+			if !f(k, value) {
+				break
+			}
+		}
+	}
+}
+
+func PreventGC(value any, d time.Duration) {
+	time.AfterFunc(d, func() {
+		// do nothing, just keep the value alive until this function is called
+		runtime.KeepAlive(value)
+	})
 }
